@@ -14,17 +14,13 @@ macro_rules! debug_log {
 
 fn get_cargo_target_dir() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR")?);
-    let profile = std::env::var("PROFILE")?;
-    let mut target_dir = None;
-    let mut sub_path = out_dir.as_path();
-    while let Some(parent) = sub_path.parent() {
-        if parent.ends_with(&profile) {
-            target_dir = Some(parent);
-            break;
-        }
-        sub_path = parent;
-    }
-    let target_dir = target_dir.ok_or("not found")?;
+    // Cargo sets PROFILE to debug/release even for custom profiles such as
+    // nightly. OUT_DIR is <profile-dir>/build/<package-hash>/out, so derive
+    // the actual profile directory from that layout instead of PROFILE.
+    let target_dir = out_dir
+        .ancestors()
+        .nth(3)
+        .ok_or("OUT_DIR does not contain a Cargo profile directory")?;
     Ok(target_dir.to_path_buf())
 }
 
